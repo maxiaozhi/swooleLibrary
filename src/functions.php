@@ -13,7 +13,7 @@ if (PHP_VERSION_ID < 70200) {
     throw new RuntimeException('require PHP version 7.2 or later');
 }
 
-if (SWOOLE_USE_SHORTNAME) {
+if (SWOOLE_USE_SHORTNAME) { // @phpstan-ignore if.alwaysTrue
     function _string(string $string = ''): Swoole\StringObject
     {
         return new Swoole\StringObject($string);
@@ -77,7 +77,7 @@ function swoole_table(int $size, string $fields): Swoole\Table
     $table = new Swoole\Table($size, 0.25);
 
     foreach ($_fields as $f) {
-        $_f = swoole_string($f)->trim()->split(':');
+        $_f   = swoole_string($f)->trim()->split(':');
         $name = $_f->get(0)->trim()->toString();
         $type = $_f->get(1)->trim();
 
@@ -103,7 +103,6 @@ function swoole_table(int $size, string $fields): Swoole\Table
                 break;
             default:
                 throw new RuntimeException("unknown field type[{$type}]");
-                break;
         }
     }
 
@@ -142,15 +141,15 @@ function swoole_container_cpu_num()
     // cgroup v2
     $cpu_max = '/sys/fs/cgroup/cpu.max';
     if (file_exists($cpu_max)) {
-        $cpu_max = file_get_contents($cpu_max);
-        $fields = explode($cpu_max, ' ');
+        $cpu_max  = file_get_contents($cpu_max);
+        $fields   = explode($cpu_max, ' ');
         $quota_us = $fields[0];
         if ($quota_us == 'max') {
             return swoole_cpu_num();
         }
         $period_us = $fields[1] ?? 100000;
     } else {
-        $quota_us = file_get_contents('/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us');
+        $quota_us  = file_get_contents('/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us');
         $period_us = file_get_contents('/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_period_us');
     }
     $cpu_num = floatval($quota_us) / floatval($period_us);

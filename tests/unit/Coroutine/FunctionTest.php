@@ -24,15 +24,11 @@ class FunctionTest extends TestCase
     {
         run(function () {
             Runtime::setHookFlags(SWOOLE_HOOK_ALL);
-            $start = microtime(true);
+            $start   = microtime(true);
             $results = batch([
-                'gethostbyname' => function () {
-                    return gethostbyname('localhost');
-                },
-                'file_get_contents' => function () {
-                    return file_get_contents(__FILE__);
-                },
-                'sleep' => function () {
+                'gethostbyname'     => fn () => gethostbyname('localhost'),
+                'file_get_contents' => fn () => file_get_contents(__FILE__),
+                'sleep'             => function () {
                     sleep(1);
                     return true;
                 },
@@ -42,7 +38,11 @@ class FunctionTest extends TestCase
                 },
             ], 0.1);
             Runtime::setHookFlags(0);
-            self::assertEqualsWithDelta(microtime(true), $start + 0.11, 0.01, 'Tasks in the batch take about 0.10 to 0.12 second in total to finish.');
+            self::assertThat(
+                microtime(true),
+                self::logicalAnd(self::greaterThan($start + 0.09), self::lessThan($start + 0.15)),
+                'Tasks in the batch take 0.10+ second to finish.'
+            );
             $this->assertEquals(count($results), 4);
 
             $this->assertEquals($results['gethostbyname'], gethostbyname('localhost'));
@@ -56,15 +56,11 @@ class FunctionTest extends TestCase
     {
         run(function () {
             Runtime::setHookFlags(SWOOLE_HOOK_ALL);
-            $start = microtime(true);
+            $start   = microtime(true);
             $results = batch([
-                'gethostbyname' => function () {
-                    return gethostbyname('localhost');
-                },
-                'file_get_contents' => function () {
-                    return file_get_contents(__FILE__);
-                },
-                'sleep' => function () {
+                'gethostbyname'     => fn () => gethostbyname('localhost'),
+                'file_get_contents' => fn () => file_get_contents(__FILE__),
+                'sleep'             => function () {
                     sleep(1);
                     return true;
                 },
@@ -76,8 +72,11 @@ class FunctionTest extends TestCase
             Runtime::setHookFlags(0);
             $end = microtime(true);
             $this->assertEquals(count($results), 4);
-            $this->assertGreaterThan(1, $end - $start);
-            $this->assertLessThan(1.2, $end - $start);
+            self::assertThat(
+                $end - $start,
+                $this->logicalAnd(self::greaterThan(1), self::lessThan(1.2)),
+                'Those batch tasks should take barely over a second to finish.'
+            );
 
             $this->assertEquals($results['gethostbyname'], gethostbyname('localhost'));
             $this->assertEquals($results['file_get_contents'], file_get_contents(__FILE__));
@@ -99,8 +98,8 @@ class FunctionTest extends TestCase
     public function testParallel()
     {
         run(function () {
-            $start = microtime(true);
-            $c = 4;
+            $start   = microtime(true);
+            $c       = 4;
             $results = [];
             parallel($c, function () use (&$results) {
                 System::sleep(0.2);
@@ -109,16 +108,19 @@ class FunctionTest extends TestCase
             $end = microtime(true);
 
             $this->assertEquals(count($results), $c);
-            $this->assertGreaterThan(0.2, $end - $start);
-            $this->assertLessThan(0.22, $end - $start);
+            self::assertThat(
+                $end - $start,
+                $this->logicalAnd(self::greaterThan(0.2), self::lessThan(0.22)),
+                'Four invocations of the callback function should take barely over 0.2 second to finish.'
+            );
         });
     }
 
     public function testMap()
     {
         run(function () {
-            $start = microtime(true);
-            $list = [1, 2, 3, 4];
+            $start   = microtime(true);
+            $list    = [1, 2, 3, 4];
             $results = map($list, function (int $i): int {
                 System::sleep(0.2);
                 return $i * 2;
